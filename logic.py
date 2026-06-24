@@ -31,6 +31,8 @@ STOPWORDS = {
     "HACE", "HACEN", "NECESITO", "NECESITA", "ESTUDIO", "ANALISIS", "TIENE", "TIENEN",
     "CODIGO", "INDICACION", "INDICACIONES", "OBSERVACION", "OBSERVACIONES", "LABORATORIO",
     "DERIVA", "DERIVADO", "DERIVADOS", "PIDO", "PEDIR", "SACAR", "RESULTADO", "RESULTADOS",
+    "TIPO", "TENGO", "TENES", "TIENES", "QUIERO", "PUEDO", "SIRVE", "HAY", "FAVOR",
+    "DECIME", "DECIR", "AVISA", "PEDIDO", "PODES", "PODRIAS", "PODRIA", "SABES", "SABE",
 }
 
 INTENTS = {
@@ -64,18 +66,25 @@ def score_record(record, terms, query_norm):
     score = 0
     if codigo_norm and codigo_norm == query_norm.replace(" ", ""):
         score += 100
+
+    # how many distinct query terms actually appear in the study name —
+    # this is the main driver of relevance, since a short generic code
+    # (e.g. nemonico "PCR") shouldn't outrank a study that matches every
+    # word of a longer, more specific query.
+    estudio_words = set(estudio_norm.split())
+    matched_terms = {t for t in terms if t in estudio_words or t in estudio_norm}
+    term_match_count = len(matched_terms)
+    score += term_match_count * 18
+    if terms and term_match_count == len(terms):
+        score += 25  # full coverage of every query term
+
     if nemonico_norm and len(nemonico_norm) >= 3 and nemonico_norm in terms:
-        score += 50
+        score += 20
+
     if terms:
         joined = " ".join(terms)
         if joined and joined in estudio_norm:
             score += 40
-    estudio_words = set(estudio_norm.split())
-    overlap = len(set(terms) & estudio_words)
-    score += overlap * 10
-    for t in terms:
-        if t in estudio_norm:
-            score += 3
     return score
 
 
